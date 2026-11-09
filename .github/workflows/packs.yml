@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAG: ${{ github.ref_name }}
-      SRC: ${{ runner.temp }}/src
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -24,6 +23,8 @@ jobs:
       - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.11'
+      - name: Каталог исходников
+        run: echo "SRC=$RUNNER_TEMP/src" >> "$GITHUB_ENV"
       - name: Версия из тега
         run: |
           case "$TAG" in packs-[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]*) ;; *) echo "тег $TAG не packs-YYYY.MM.N"; exit 1;; esac

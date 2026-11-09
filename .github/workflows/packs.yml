@@ -1,0 +1,54 @@
+# Копия лежит в ovr58/subword-packs/.github/workflows/packs.yml. Релиз пакетов по тегу packs-YYYY.MM.N.
+name: packs
+on:
+  push:
+    tags: ['packs-*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      SRC: ${{ runner.temp }}/src
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: ovr58/subword
+          ref: ${{ vars.SUBWORD_REF }}
+          token: ${{ secrets.SUBWORD_READ_TOKEN }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.11'
+      - name: Версия из тега
+        run: |
+          case "$TAG" in packs-[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9]*) ;; *) echo "тег $TAG не packs-YYYY.MM.N"; exit 1;; esac
+          echo "VERSION=${TAG#packs-}" >> "$GITHUB_ENV"
+      - name: Исходники (SHA-256 из sources.json)
+        run: node tools/packs/fetch-sources.mjs --out "$SRC"
+      - name: Формы Simplemma
+        run: python -I tools/packs/simplemma-dump.py --wheel "$SRC"/simplemma-*.whl --lang de --out "$SRC/de.tsv"
+      - name: Словари en и de
+        run: |
+          node tools/packs/build.mjs --source en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source de --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
+      - name: Модели en-ru и de-ru
+        run: |
+          node tools/packs/build-mt.mjs --pair en-ru --version "$VERSION" --out dist-packs
+          node tools/packs/build-mt.mjs --pair de-ru --version "$VERSION" --out dist-packs
+      - name: Манифест и подпись
+        env:
+          MANIFEST_SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$MANIFEST_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
+          node tools/packs/manifest.mjs --dir dist-packs --tag "$TAG" --repo ovr58/subword-packs --sign "$RUNNER_TEMP/key.pem" --mt-attribution 'Translation models © Mozilla, mozilla/translations, MPL-2.0' --mt-license MPL-2.0
+          rm -f "$RUNNER_TEMP/key.pem"
+      - name: Релиз
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" dist-packs/* --repo ovr58/subword-packs --title "$TAG" --notes "Packs $VERSION"

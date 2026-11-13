@@ -37,17 +37,25 @@ jobs:
         run: |
           node tools/packs/build.mjs --source en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
           node tools/packs/build.mjs --source de --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source en --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source de --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source ka --target ru --pivot dist-packs/en-ru.json.gz --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-ka-ka_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source ka --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-ka-ka_full.txt" --top 100000 --version "$VERSION" --out dist-packs
       - name: Модели en-ru и de-ru
         run: |
           node tools/packs/build-mt.mjs --pair en-ru --version "$VERSION" --out dist-packs
           node tools/packs/build-mt.mjs --pair de-ru --version "$VERSION" --out dist-packs
+          node tools/packs/build-mt.mjs --pair de-en --version "$VERSION" --out dist-packs
+      - name: Пакет голоса tts-ka
+        run: |
+          node tools/packs/build-tts.mjs --lang ka --onnx "$SRC/tts-ka-onnx-ka_GE-natia-medium.onnx" --json "$SRC/tts-ka-json-ka_GE-natia-medium.onnx.json" --data "$SRC/tts-ka-data-piper_phonemize.data" --version "$VERSION" --out dist-packs
       - name: Манифест и подпись
         env:
           MANIFEST_SIGNING_KEY: ${{ secrets.MANIFEST_SIGNING_KEY }}
         run: |
           umask 077
           printf '%s\n' "$MANIFEST_SIGNING_KEY" > "$RUNNER_TEMP/key.pem"
-          node tools/packs/manifest.mjs --dir dist-packs --tag "$TAG" --repo ovr58/subword-packs --sign "$RUNNER_TEMP/key.pem" --mt-attribution 'Translation models © Mozilla, mozilla/translations, MPL-2.0' --mt-license MPL-2.0
+          node tools/packs/manifest.mjs --dir dist-packs --tag "$TAG" --repo ovr58/subword-packs --sign "$RUNNER_TEMP/key.pem" --mt-attribution 'Translation models © Mozilla, mozilla/translations, MPL-2.0' --mt-license MPL-2.0 --tts-attribution 'Piper voice ka_GE-natia-medium, rhasspy/piper-voices' --tts-license 'See LICENSE file'
           rm -f "$RUNNER_TEMP/key.pem"
       - name: Релиз
         env:

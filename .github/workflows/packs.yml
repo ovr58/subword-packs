@@ -41,6 +41,9 @@ jobs:
           node tools/packs/build.mjs --source de --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
           node tools/packs/build.mjs --source ka --target ru --pivot dist-packs/en-ru.json.gz --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
           node tools/packs/build.mjs --source ka --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+      - name: Файлы словарей
+        run: |
+          for f in dist-packs/*.json.gz; do node tools/packs/pack-files.mjs --in "$f" --out dist-packs; done
       - name: Модели en-ru и de-ru
         run: |
           node tools/packs/build-mt.mjs --pair en-ru --version "$VERSION" --out dist-packs

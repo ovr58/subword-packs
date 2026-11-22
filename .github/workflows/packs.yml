@@ -41,6 +41,15 @@ jobs:
           node tools/packs/build.mjs --source de --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
           node tools/packs/build.mjs --source ka --target ru --pivot dist-packs/en-ru.json.gz --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
           node tools/packs/build.mjs --source ka --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+      - name: Словари языков
+        run: |
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source de --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ka --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ru --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-ru-ru_full.txt" --top 100000 --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
+      - name: Сверка З1
+        run: |
+          for p in en/en-ru en/en-en de/de-ru de/de-en ka/ka-ru ka/ka-en; do node tools/packs/compare-lang.mjs --lang "dist-packs/${p%/*}.json.gz" --pair "dist-packs/${p#*/}.json.gz"; done
       - name: Файлы словарей
         run: |
           for f in dist-packs/*.json.gz; do node tools/packs/pack-files.mjs --in "$f" --out dist-packs; done
@@ -49,6 +58,8 @@ jobs:
           node tools/packs/build-mt.mjs --pair en-ru --version "$VERSION" --out dist-packs
           node tools/packs/build-mt.mjs --pair de-ru --version "$VERSION" --out dist-packs
           node tools/packs/build-mt.mjs --pair de-en --version "$VERSION" --out dist-packs
+          node tools/packs/build-mt.mjs --pair ru-en --version "$VERSION" --out dist-packs
+          node tools/packs/build-mt.mjs --pair en-de --version "$VERSION" --out dist-packs
       - name: Пакет голоса tts-ka
         run: |
           node tools/packs/build-tts.mjs --lang ka --onnx "$SRC/tts-ka-onnx-ka_GE-natia-medium.onnx" --json "$SRC/tts-ka-json-ka_GE-natia-medium.onnx.json" --data "$SRC/tts-ka-data-piper_phonemize.data" --version "$VERSION" --out dist-packs

@@ -31,25 +31,43 @@ jobs:
           echo "VERSION=${TAG#packs-}" >> "$GITHUB_ENV"
       - name: Исходники (SHA-256 из sources.json)
         run: node tools/packs/fetch-sources.mjs --out "$SRC"
+      - name: Раскол дампа
+        run: node tools/packs/split-dump.mjs --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --out "$SRC/split"
+      - name: Индекс пивота
+        run: node tools/packs/build-index.mjs --split "$SRC/split" --out "$SRC/pivot-index.json.gz"
       - name: Формы Simplemma
         run: python -I tools/packs/simplemma-dump.py --wheel "$SRC"/simplemma-*.whl --lang de --out "$SRC/de.tsv"
       - name: Словари en и de
         run: |
-          node tools/packs/build.mjs --source en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
-          node tools/packs/build.mjs --source de --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
-          node tools/packs/build.mjs --source en --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
-          node tools/packs/build.mjs --source de --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
-          node tools/packs/build.mjs --source ka --target ru --pivot dist-packs/en-ru.json.gz --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
-          node tools/packs/build.mjs --source ka --target en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source en --kaikki "$SRC/split/en.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source de --kaikki "$SRC/split/de.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --dewikt "$SRC/dewikt-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source en --target en --kaikki "$SRC/split/en.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source de --target en --kaikki "$SRC/split/de.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source ka --target ru --pivot dist-packs/en-ru.json.gz --kaikki "$SRC/split/ka.jsonl.gz" --index "$SRC/pivot-index.json.gz" --version "$VERSION" --out dist-packs
+          node tools/packs/build.mjs --source ka --target en --kaikki "$SRC/split/ka.jsonl.gz" --version "$VERSION" --out dist-packs
       - name: Словари языков
         run: |
-          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source en --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
-          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source de --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
-          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ka --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
-          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ru --kaikki "$SRC/kaikki-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-ru-ru_full.txt" --top 3000000 --pivot dist-packs/en.json.gz --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source en --kaikki "$SRC/split/en.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-en_full.txt" --top 100000 --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source de --kaikki "$SRC/split/de.jsonl.gz" --ruwikt "$SRC/ruwikt-raw-wiktextract-data.jsonl.gz" --freq "$SRC/freq-de-de_full.txt" --simplemma "$SRC/de.tsv" --top 100000 --pivot dist-packs/en.json.gz --index "$SRC/pivot-index.json.gz" --dewikt "$SRC/dewikt-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ka --kaikki "$SRC/split/ka.jsonl.gz" --pivot dist-packs/en.json.gz --index "$SRC/pivot-index.json.gz" --dewikt "$SRC/dewikt-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
+          node --max-old-space-size=12288 tools/packs/build-lang.mjs --source ru --kaikki "$SRC/split/ru.jsonl.gz" --freq "$SRC/freq-ru-ru_full.txt" --top 3000000 --pivot dist-packs/en.json.gz --index "$SRC/pivot-index.json.gz" --dewikt "$SRC/dewikt-raw-wiktextract-data.jsonl.gz" --version "$VERSION" --out dist-packs
       - name: Сверка З1
         run: |
           for p in en/en-ru en/en-en de/de-ru de/de-en ka/ka-ru ka/ka-en; do node tools/packs/compare-lang.mjs --lang "dist-packs/${p%/*}.json.gz" --pair "dist-packs/${p#*/}.json.gz"; done
+      - name: Сканер
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tar -xzf "$SRC/freq-ka-kat_news_2020_100K.tar.gz" -C "$SRC"
+          # прежний latest (без тега gh берёт latest, а не новейший по дате); нет ассета quality.json — без гейта (первый выпуск после фикса)
+          PREV=$(gh release view --repo ovr58/subword-packs --json tagName -q .tagName || true)
+          gh release download "$PREV" --repo ovr58/subword-packs -p quality.json -D prev || true
+          mkdir -p dist-quality
+          if [ -f prev/quality.json ]; then
+            node tools/packs/scan-quality.mjs --dir dist-packs --index "$SRC/pivot-index.json.gz" --freq-dir "$SRC" --out dist-quality/quality.json --gate prev/quality.json
+          else
+            node tools/packs/scan-quality.mjs --dir dist-packs --index "$SRC/pivot-index.json.gz" --freq-dir "$SRC" --out dist-quality/quality.json
+          fi
       - name: Файлы словарей
         run: |
           for f in dist-packs/*.json.gz; do node tools/packs/pack-files.mjs --in "$f" --out dist-packs; done
@@ -74,4 +92,4 @@ jobs:
       - name: Релиз
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$TAG" dist-packs/* --repo ovr58/subword-packs --title "$TAG" --notes "Packs $VERSION"
+        run: gh release create "$TAG" dist-packs/* dist-quality/quality.json --repo ovr58/subword-packs --title "$TAG" --notes "Packs $VERSION"
